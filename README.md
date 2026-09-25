@@ -7,6 +7,9 @@ FraudGuard AI is a complete Flask web application for the corrected credit-card/
 - secure registration and login;
 - an SQLite prediction history;
 - responsive HTML, CSS, and JavaScript pages.
+<img width="800" height="373" alt="creditcardfraud" src="https://github.com/user-attachments/assets/a96609d1-ded6-4baf-9442-e21f62a1166c" />
+
+
 
 ## Included pages
 
