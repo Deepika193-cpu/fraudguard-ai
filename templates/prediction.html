@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction · {{ app_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/prediction.css') }}">{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+    <div class="container">
+        <div class="page-heading-row">
+            <div>
+                <span class="eyebrow">Transaction assessment</span>
+                <h1>Fraud-risk prediction</h1>
+                <p>Enter values known before the transaction completes.</p>
+            </div>
+            <div class="model-status {% if model_ready %}ready{% else %}not-ready{% endif %}">
+                <span></span>
+                {% if model_ready %}Both models ready{% else %}Model setup required{% endif %}
+            </div>
+        </div>
+
+        {% if not model_ready %}
+            <div class="setup-alert">
+                <div class="setup-alert-icon">!</div>
+                <div>
+                    <h2>Add your trained model files</h2>
+                    <p>Copy both files into <code>model_artifacts/</code> and restart Flask.</p>
+                    <ul>
+                        <li><code>best_fraud_detection_model.pkl</code></li>
+                        <li><code>fraud_q_learning_policy.pkl</code></li>
+                    </ul>
+                    {% if model_errors %}
+                        <details>
+                            <summary>Technical status</summary>
+                            {% for error in model_errors %}<p>{{ error }}</p>{% endfor %}
+                        </details>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="prediction-layout {% if result %}has-result{% endif %}">
+            <div class="panel transaction-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-kicker">Input</span>
+                        <h2>Transaction details</h2>
+                    </div>
+                    <div class="time-preview">
+                        <small>Calculated time</small>
+                        <strong><span data-preview-day>Day 1</span> · <span data-preview-hour>00:00</span></strong>
+                    </div>
+                </div>
+
+                <form method="post" class="prediction-form" data-prediction-form novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-grid-two">
+                        <div class="form-group">
+                            <label for="step">Transaction step</label>
+                            <input id="step" name="step" type="number" value="{{ form_values.step }}" min="1" max="1000000" step="1" required data-step-input>
+                            <small>Step 1 represents Day 1, Hour 00:00.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="type">Transaction type</label>
+                            <select id="type" name="type" required>
+                                {% for transaction_type in transaction_types %}
+                                    <option value="{{ transaction_type }}" {% if form_values.type == transaction_type %}selected{% endif %}>{{ transaction_type|replace('_', ' ')|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group amount-group">
+                        <label for="amount">Transaction amount</label>
+                        <div class="currency-input">
+                            <span aria-hidden="true">₹</span>
+                            <input id="amount" name="amount" type="number" value="{{ form_values.amount }}" min="0" max="1000000000000" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <small>Use the same numeric unit used in the training dataset.</small>
+                    </div>
+
+                    <div class="balance-grid">
+                        <div class="form-group balance-card">
+                            <div class="balance-label">
+                                <span class="account-icon origin">O</span>
+                                <label for="oldbalanceOrig">Old origin balance</label>
+                            </div>
+                            <input id="oldbalanceOrig" name="oldbalanceOrig" type="number" value="{{ form_values.oldbalanceOrig }}" min="0" max="1000000000000" step="0.01" placeholder="Sender balance before transaction" required>
+                        </div>
+
+                        <div class="form-group balance-card">
+                            <div class="balance-label">
+                                <span class="account-icon destination">D</span>
+                                <label for="oldbalanceDest">Old destination balance</label>
+                            </div>
+                            <input id="oldbalanceDest" name="oldbalanceDest" type="number" value="{{ form_values.oldbalanceDest }}" min="0" max="1000000000000" step="0.01" placeholder="Receiver balance before transaction" required>
+                        </div>
+                    </div>
+
+                    <div class="privacy-note">
+                        <span>i</span>
+                        <p>New balances are intentionally excluded because they are post-transaction values.</p>
+                    </div>
+
+                    <button class="button button-primary button-full prediction-submit" type="submit" {% if not model_ready %}disabled{% endif %}>
+                        <span class="button-label">Analyse transaction</span>
+                        <span class="button-loading">Analysing…</span>
+                    </button>
+                </form>
+            </div>
+
+            {% if result %}
+                <div class="result-column">
+                    <div class="panel result-panel risk-{{ result.ml.risk_level|lower|replace(' ', '-') }}">
+                        <div class="result-topline">
+                            <span class="panel-kicker">Analysis #{{ result.log_id }}</span>
+                            <span class="prediction-pill {{ result.ml.ml_prediction|lower }}">{{ result.ml.ml_prediction }}</span>
+                        </div>
+
+                        <div class="risk-visual-row">
+                            <div class="risk-gauge" style="--risk-angle: {{ result.ml.calibrated_fraud_risk * 360 }}deg;">
+                                <div>
+                                    <strong>{{ "%.2f"|format(result.ml.calibrated_fraud_risk * 100) }}%</strong>
+                                    <span>fraud risk</span>
+                                </div>
+                            </div>
+                            <div class="risk-summary">
+                                <span class="risk-level">{{ result.ml.risk_level }} risk</span>
+                                <h2>{{ result.rl.final_action|replace('_', ' ')|title }}</h2>
+                                <p>Final operational recommendation from the RL policy.</p>
+                            </div>
+                        </div>
+
+                        <div class="metric-grid">
+                            <div><small>ML model</small><strong>{{ result.ml.model_name }}</strong></div>
+                            <div><small>Decision threshold</small><strong>{{ "%.4f"|format(result.ml.decision_threshold * 100) }}%</strong></div>
+                            <div><small>Day / Hour</small><strong>{{ result.ml.day }} / {{ "%02d"|format(result.ml.hour) }}:00</strong></div>
+                            <div><small>RL state</small><strong>{{ result.rl.state }}</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="panel decision-panel">
+                        <div class="panel-header compact">
+                            <div><span class="panel-kicker">Policy evidence</span><h2>Q-value comparison</h2></div>
+                            <span class="sample-badge">{{ result.rl.state_sample_count }} samples</span>
+                        </div>
+
+                        <div class="q-value-list">
+                            {% for action, q_value in result.rl.q_values.items() %}
+                                <div class="q-value-row {% if action == result.rl.final_action %}selected{% endif %}">
+                                    <span>{{ action|replace('_', ' ')|title }}</span>
+                                    <div class="q-track"><span style="width: {{ [[((q_value + 70) / 120 * 100), 0]|max, 100]|min }}%"></span></div>
+                                    <strong>{{ "%.4f"|format(q_value) }}</strong>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="decision-details">
+                            <div><small>Learned action</small><strong>{{ result.rl.learned_action|replace('_', ' ')|title }}</strong></div>
+                            <div><small>Final action</small><strong class="action-text action-{{ result.rl.final_action|lower|replace('_', '-') }}">{{ result.rl.final_action|replace('_', ' ')|title }}</strong></div>
+                            <div class="decision-source"><small>Decision source</small><code>{{ result.rl.decision_source }}</code></div>
+                        </div>
+
+                        <a class="text-link" href="{{ url_for('logs') }}">Open complete prediction history →</a>
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-result panel">
+                    <div class="empty-orbit"><span></span></div>
+                    <h2>Your analysis will appear here</h2>
+                    <p>Submit a transaction to view its calibrated risk, ML classification, Q-values and recommended action.</p>
+                    <div class="empty-action-row">
+                        <span>Approve</span><span>Authenticate</span><span>Review</span><span>Block</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/prediction.js') }}" defer></script>{% endblock %}

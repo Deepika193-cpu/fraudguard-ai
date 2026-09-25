@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}About · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="container hero-grid">
+        <div>
+            <span class="eyebrow">ML + one-step Q-learning</span>
+            <h1>From transaction data to an explainable action.</h1>
+            <p class="hero-copy">{{ app_name }} estimates fraud risk using a calibrated machine-learning model and then uses a Q-learning policy to recommend the operational response.</p>
+            <div class="hero-actions">
+                {% if g.user %}
+                    <a class="button button-primary" href="{{ url_for('prediction') }}">Analyse a transaction</a>
+                    <a class="button button-secondary" href="{{ url_for('logs') }}">View my logs</a>
+                {% else %}
+                    <a class="button button-primary" href="{{ url_for('register') }}">Create account</a>
+                    <a class="button button-secondary" href="{{ url_for('login') }}">Login</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="system-card">
+            <div class="system-flow-item">
+                <span>01</span><div><strong>Transaction input</strong><small>Pre-transaction values only</small></div>
+            </div>
+            <div class="flow-line"></div>
+            <div class="system-flow-item">
+                <span>02</span><div><strong>ML risk model</strong><small>Calibrated fraud-risk estimate</small></div>
+            </div>
+            <div class="flow-line"></div>
+            <div class="system-flow-item">
+                <span>03</span><div><strong>RL policy</strong><small>Action from learned Q-values</small></div>
+            </div>
+            <div class="flow-line"></div>
+            <div class="system-flow-item">
+                <span>04</span><div><strong>Auditable result</strong><small>Decision saved to SQLite</small></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content-section">
+    <div class="container">
+        <div class="section-heading">
+            <span class="eyebrow">How it works</span>
+            <h2>Two connected decision layers</h2>
+        </div>
+
+        <div class="feature-card-grid">
+            <article class="feature-card">
+                <span class="card-tag">Layer 1</span>
+                <h3>Machine-learning risk estimation</h3>
+                <p>The model receives step, transaction type, amount, origin balance and destination balance. It creates the same leakage-safe features used during training and returns a calibrated risk estimate.</p>
+            </article>
+            <article class="feature-card">
+                <span class="card-tag">Layer 2</span>
+                <h3>Q-learning action selection</h3>
+                <p>The policy combines fraud-risk state, amount state and time state. It compares Q-values for Approve, Additional Authentication, Manual Review and Block.</p>
+            </article>
+            <article class="feature-card">
+                <span class="card-tag">Safety</span>
+                <h3>Coverage checks and guardrails</h3>
+                <p>Sparse states use a transparent fallback rule. High-risk guardrails prevent unsafe approval when Q-table evidence is insufficient or noisy.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="content-section content-section-muted">
+    <div class="container split-content">
+        <div>
+            <span class="eyebrow">Leakage-safe inputs</span>
+            <h2>Only information known before completion</h2>
+            <p>The application deliberately excludes new origin and destination balances. Those values describe what happened after a transaction and would make a real-time decision unrealistically easy.</p>
+        </div>
+        <div class="input-list">
+            <div><span>✓</span> Simulated time step</div>
+            <div><span>✓</span> Transaction type</div>
+            <div><span>✓</span> Transaction amount</div>
+            <div><span>✓</span> Old origin balance</div>
+            <div><span>✓</span> Old destination balance</div>
+        </div>
+    </div>
+</section>
+
+<section class="content-section">
+    <div class="container caution-panel">
+        <div class="caution-symbol">!</div>
+        <div>
+            <h2>Academic decision-support system</h2>
+            <p>This project demonstrates model training, calibration and action-policy learning. Its predictions should be reviewed by a qualified person before any real financial decision is made.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

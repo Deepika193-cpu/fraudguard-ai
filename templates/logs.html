@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction Logs · {{ app_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/logs.css') }}">{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+    <div class="container">
+        <div class="page-heading-row">
+            <div>
+                <span class="eyebrow">Private audit trail</span>
+                <h1>Prediction logs</h1>
+                <p>Review the transactions analysed through your account.</p>
+            </div>
+            <a class="button button-primary" href="{{ url_for('prediction') }}">New prediction</a>
+        </div>
+
+        <div class="summary-grid">
+            <article class="summary-card">
+                <span>Total analyses</span><strong>{{ summary.total }}</strong><small>All saved predictions</small>
+            </article>
+            <article class="summary-card danger-accent">
+                <span>Fraud predictions</span><strong>{{ summary.fraud_predictions }}</strong><small>Above ML threshold</small>
+            </article>
+            <article class="summary-card block-accent">
+                <span>Blocked</span><strong>{{ summary.blocked }}</strong><small>Final RL block actions</small>
+            </article>
+            <article class="summary-card risk-accent">
+                <span>Average risk</span><strong>{{ "%.2f"|format(summary.average_risk * 100) }}%</strong><small>Across your saved logs</small>
+            </article>
+        </div>
+
+        <div class="panel logs-panel">
+            <div class="logs-toolbar">
+                <div>
+                    <span class="panel-kicker">History</span>
+                    <h2>Transaction decisions</h2>
+                </div>
+                <div class="table-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input type="search" placeholder="Filter visible rows…" aria-label="Filter visible logs" data-log-search>
+                </div>
+            </div>
+
+            {% if prediction_logs %}
+                <div class="table-wrap">
+                    <table class="logs-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Transaction</th>
+                                <th>Amount</th>
+                                <th>Risk</th>
+                                <th>ML result</th>
+                                <th>Final action</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in prediction_logs %}
+                                <tr data-log-row data-search-value="{{ row['id'] }} {{ row['transaction_type'] }} {{ row['ml_prediction'] }} {{ row['final_rl_action'] }} {{ row['created_at'] }}">
+                                    <td><span class="log-id">#{{ row['id'] }}</span></td>
+                                    <td>
+                                        <strong>{{ row['transaction_type']|replace('_', ' ')|title }}</strong>
+                                        <small>Step {{ row['step'] }} · State {{ row['rl_state'] }}</small>
+                                    </td>
+                                    <td><strong>₹{{ "{:,.2f}".format(row['amount']) }}</strong></td>
+                                    <td>
+                                        <div class="risk-cell">
+                                            <strong>{{ "%.2f"|format(row['fraud_probability'] * 100) }}%</strong>
+                                            <div class="mini-risk-track"><span style="width: {{ row['fraud_probability'] * 100 }}%"></span></div>
+                                            <small>{{ row['risk_level'] }}</small>
+                                        </div>
+                                    </td>
+                                    <td><span class="table-pill {{ row['ml_prediction']|lower }}">{{ row['ml_prediction'] }}</span></td>
+                                    <td><span class="table-action action-{{ row['final_rl_action']|lower|replace('_', '-') }}">{{ row['final_rl_action']|replace('_', ' ')|title }}</span></td>
+                                    <td><time>{{ row['created_at'] }} UTC</time></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="empty-filter-state" data-empty-filter hidden>No visible rows match your filter.</div>
+
+                {% if total_pages > 1 %}
+                    <nav class="pagination" aria-label="Prediction log pages">
+                        {% if page > 1 %}<a href="{{ url_for('logs', page=page-1) }}">← Previous</a>{% else %}<span>← Previous</span>{% endif %}
+                        <strong>Page {{ page }} of {{ total_pages }}</strong>
+                        {% if page < total_pages %}<a href="{{ url_for('logs', page=page+1) }}">Next →</a>{% else %}<span>Next →</span>{% endif %}
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="empty-logs">
+                    <div class="empty-log-icon">≡</div>
+                    <h3>No predictions saved yet</h3>
+                    <p>Your transaction assessments will appear here automatically.</p>
+                    <a class="button button-primary" href="{{ url_for('prediction') }}">Create first prediction</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='js/logs.js') }}" defer></script>{% endblock %}

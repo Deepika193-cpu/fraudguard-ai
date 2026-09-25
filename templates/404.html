@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="error-section"><div class="container error-card"><span>404</span><h1>Page not found</h1><p>The page you requested does not exist or has moved.</p><a class="button button-primary" href="{{ url_for('index') }}">Return home</a></div></section>
+{% endblock %}
